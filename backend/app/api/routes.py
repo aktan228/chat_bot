@@ -61,6 +61,21 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 #     response: str
 
 
+# @router.post("/chat", response_model=ChatResponse)
+# def chat_endpoint(
+#     request: ChatRequest,
+#     token: str = Depends(oauth2_scheme),
+#     db: Session = Depends(get_db)
+# ):
+#     payload = verify_token(token)
+#     if not payload:
+#         raise HTTPException(status_code=401, detail="Invalid token")
+
+#     user_email = payload.get("sub")
+#     response, chat_id = generate_response_with_history(request.prompt, user_email, db, request.chat_id)
+#     return {"response": response, "chat_id": chat_id}
+
+
 @router.post("/chat", response_model=ChatResponse)
 def chat_endpoint(
     request: ChatRequest,
@@ -74,7 +89,6 @@ def chat_endpoint(
     user_email = payload.get("sub")
     response, chat_id = generate_response_with_history(request.prompt, user_email, db, request.chat_id)
     return {"response": response, "chat_id": chat_id}
-
 
 #сессии
 @router.get("/chat/sessions")
