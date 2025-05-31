@@ -1,19 +1,20 @@
-from fastapi import HTTPException, APIRouter, Depends
+from fastapi import HTTPException, APIRouter, Depends,Query
 from sqlalchemy.orm import Session
 from app.database.db import SessionLocal
 from app.models.user import User
 from app.schemas.user import UserCreate,ChatRequest,ChatResponse, UserRead,ChatMessagesRead
-from pydantic import BaseModel
-# from app.services.chat_service import generate_response
+# from pydantic import BaseModel
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-# from app.utils.jwt_handler import create_access_token, verify_token
 from app.utils.jwt_handler import create_access_token, verify_token
 from app.services.chat_service import generate_response_with_history
 from app.models.chat import ChatMessages
 from app.database.db import get_db
 from app.utils.jwt_handler import verify_token
 from typing import List
+from app.schemas.user import ChatSummary
+from sqlalchemy import func
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -53,28 +54,6 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 # 12321232143
-# class ChatRequest(BaseModel):
-#     prompt: str
-
-
-# class ChatResponse(BaseModel):
-#     response: str
-
-
-# @router.post("/chat", response_model=ChatResponse)
-# def chat_endpoint(
-#     request: ChatRequest,
-#     token: str = Depends(oauth2_scheme),
-#     db: Session = Depends(get_db)
-# ):
-#     payload = verify_token(token)
-#     if not payload:
-#         raise HTTPException(status_code=401, detail="Invalid token")
-
-#     user_email = payload.get("sub")
-#     response, chat_id = generate_response_with_history(request.prompt, user_email, db, request.chat_id)
-#     return {"response": response, "chat_id": chat_id}
-
 
 @router.post("/chat", response_model=ChatResponse)
 def chat_endpoint(
@@ -93,7 +72,10 @@ def chat_endpoint(
 #сессии
 @router.get("/chat/sessions")
 def list_sessions(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    
     payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Недействительный токен")
     user_email = payload.get("sub")
 
     sessions = db.query(ChatMessages.chat_id)\
@@ -102,10 +84,68 @@ def list_sessions(token: str = Depends(oauth2_scheme), db: Session = Depends(get
 
     return [s.chat_id for s in sessions]
 
+# story of my chats
+
+@router.get("/chat/list", response_model=List[ChatSummary])
+def list_chats(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Недействительный токен")
+
+    user_email = payload.get("sub")
+
+    subquery = (
+        db.query(
+            ChatMessages.chat_id,
+            func.max(ChatMessages.timestamp).label("last_time")
+        )
+        .filter(ChatMessages.user_email == user_email)
+        .group_by(ChatMessages.chat_id)
+        .subquery()
+    )
+
+    result = (
+        db.query(
+            ChatMessages.chat_id,
+            ChatMessages.content.label("last_message"),
+            ChatMessages.timestamp
+        )
+        .join(subquery, (ChatMessages.chat_id == subquery.c.chat_id) & (ChatMessages.timestamp == subquery.c.last_time))
+        .all()
+    )
+
+    return [
+        {
+            "chat_id": row.chat_id,
+            "last_message": row.last_message,
+            "timestamp": row.timestamp.isoformat()
+        }
+        for row in result
+    ]
+#
+
+@router.get("/chat/{chat_id}", response_model=List[ChatMessagesRead])
+def get_chat_by_id(chat_id: str, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    payload = verify_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user_email = payload["sub"]
+    chat = db.query(ChatMessages).filter(
+        ChatMessages.chat_id == chat_id,
+        ChatMessages.user_email == user_email
+    ).order_by(ChatMessages.timestamp).all()
+
+    return chat
+
 # история чата
 
 @router.get("/chat/history", response_model=List[ChatMessagesRead])
-def get_history(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_history(
+    chat_id: str = Query(...),
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
     payload = verify_token(token)
     if not payload or "sub" not in payload:
         raise HTTPException(status_code=401, detail="Invalid token or missing subject")
@@ -114,7 +154,10 @@ def get_history(token: str = Depends(oauth2_scheme), db: Session = Depends(get_d
 
     history = (
         db.query(ChatMessages)
-        .filter(ChatMessages.user_email == user_email)
+        .filter(
+            ChatMessages.user_email == user_email,
+            ChatMessages.chat_id == chat_id  
+        )
         .order_by(ChatMessages.timestamp)
         .all()
     )
@@ -136,12 +179,12 @@ def verify_password(plain_password, hashed_password):
 
 @router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.username == user.username).first():
-        raise HTTPException(status_code=400, detail="Username already exists")
+    # if db.query(User).filter(User.username == user.username).first():
+    #     raise HTTPException(status_code=400, detail="Username already exists")
     if db.query(User).filter(User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     new_user = User(
-        username=user.username,
+        # username=user.username,
         email=user.email,
         hashed_password=hash_password(user.password),
     )

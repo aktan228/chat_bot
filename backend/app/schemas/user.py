@@ -4,19 +4,23 @@ from datetime import datetime
 from typing import Optional
 
 class UserCreate(BaseModel):
-    username: str
+    # username: str
     email: EmailStr
     password: str
-
+class ChatSummary(BaseModel):
+    chat_id: str
+    last_message: str
+    timestamp: str 
 
 class UserRead(BaseModel):
     id: int
-    username: str
+    # username: str
     email: EmailStr
 
     model_config = {"from_attributes": True}
     
 class ChatMessagesRead(BaseModel):
+    chat_id: str   
     role:str
     content: str
     timestamp:datetime

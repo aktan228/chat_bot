@@ -14,3 +14,12 @@ def verify_token(token: str) -> dict:
         return payload
     except JWTError:
         return None
+def decode_token(token: str):
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        return payload
+    # except ExpiredSignatureError:
+    #     print("❌ Токен истёк")
+    except JWTError as e:
+        print(f"❌ Недействительный токен: {str(e)}")
+    return None
