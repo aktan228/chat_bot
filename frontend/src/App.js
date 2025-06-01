@@ -8,10 +8,12 @@ import { useState, useEffect } from "react";
 import ChatPage from "./components/ChatPage";
 import RegisterPage from "./components/RegisterPage";
 import LoginPage from "./components/LoginPage";
-import Header from "./components/Header";
-
+// import Header from "./components/Header";
+// import useTheme from "../hooks/useTheme";
+// import useTheme from "./hook/useTheme";
 function App() {
   const [userEmail, setUserEmail] = useState(null);
+  // const [theme, toggleTheme] = useTheme(userEmail);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -33,9 +35,6 @@ function App() {
 
   return (
     <Router>
-      {isAuthenticated && (
-        <Header userEmail={userEmail} onLogout={handleLogout} />
-      )}
 
       <Routes>
         <Route

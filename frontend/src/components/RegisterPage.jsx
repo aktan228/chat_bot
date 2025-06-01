@@ -11,7 +11,7 @@ const RegisterPage = () => {
     setError('');
 
     if (!email.includes('@') || password.length < 3) {
-      setError('Введите корректный email и пароль (минимум 3 символа)');
+      setError('Please enter a valid email and a password (at least 3 characters).');
       return;
     }
 
@@ -26,52 +26,52 @@ const RegisterPage = () => {
 
       if (!res.ok) {
         if (Array.isArray(data.detail)) {
-          setError(data.detail[0]?.msg || 'Ошибка регистрации');
+          setError(data.detail[0]?.msg || 'Registration error');
         } else {
-          setError(data.detail || 'Ошибка регистрации');
+          setError(data.detail || 'Registration error');
         }
         return;
       }
 
-      alert('Регистрация успешна! Войдите под своим email.');
+      alert('Registration successful! Please log in.');
       navigate('/login');
     } catch (err) {
-      setError('Сетевая ошибка. Попробуйте позже.');
+      setError('Network error. Please try again later.');
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div className="p-6 bg-white rounded shadow-md w-80">
-        <h2 className="text-xl font-semibold mb-4">Регистрация</h2>
+    <div className="flex items-center justify-center h-screen bg-black text-white">
+      <div className="p-6 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded shadow-md w-80">
+        <h2 className="text-xl font-semibold mb-4 text-center">Register</h2>
         {error && <div className="text-red-600 mb-2 text-sm">{error}</div>}
         <input
           type="email"
           placeholder="Email"
-          className="w-full p-2 border rounded mb-4"
+          className="w-full p-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-black dark:text-white rounded mb-3"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
         <input
           type="password"
-          placeholder="Пароль"
-          className="w-full p-2 border rounded mb-4"
+          placeholder="Password"
+          className="w-full p-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-black dark:text-white rounded mb-3"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
         <button
           onClick={handleRegister}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          className="w-full bg-black dark:bg-white text-white dark:text-black py-2 rounded hover:opacity-80 transition"
         >
-          Зарегистрироваться
+          Sign Up
         </button>
         <p className="mt-2 text-sm text-center">
-          Уже есть аккаунт?{' '}
+          Already have an account?{' '}
           <span
-            className="text-blue-600 cursor-pointer"
-            onClick={() => navigate('/api/login')}
+            className="underline cursor-pointer"
+            onClick={() => navigate('/login')}
           >
-            Войти
+            Log In
           </span>
         </p>
       </div>

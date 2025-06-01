@@ -1,6 +1,6 @@
 import React from "react";
 
-const topics = ["Mathematic", "History", "Programming", "Economic"];
+const topics = ["Mathematics", "History", "Programming", "Economics"];
 
 const TopicSelector = ({ selectedTopic, onSelect }) => {
   return (
@@ -10,8 +10,8 @@ const TopicSelector = ({ selectedTopic, onSelect }) => {
           key={topic}
           className={`px-4 py-2 rounded-lg border transition ${
             selectedTopic === topic
-              ? "bg-blue-600 text-white"
-              : "bg-white text-gray-800 hover:bg-blue-100"
+              ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
+              : "bg-white text-black border-gray-300 hover:bg-gray-100 dark:bg-black dark:text-white dark:border-gray-700 dark:hover:bg-gray-800"
           }`}
           onClick={() => onSelect(topic)}
         >

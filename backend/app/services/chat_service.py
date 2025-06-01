@@ -10,33 +10,74 @@ load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 print("API KEY:", OPENROUTER_API_KEY)
 
+
 def generate_response_with_history(
-    prompt: str, user_email: str, db: Session, chat_id: Optional[str] = None
+    prompt: str,
+    user_email: str,
+    db: Session,
+    chat_id: Optional[str] = None,
+    topic: Optional[str] = "Mathematics",
+    # language: Optional[str] = "en",
 ) -> Tuple[str, str]:
+
     if not OPENROUTER_API_KEY:
-        return "Ошибка: ключ OpenRouter не найден. Убедитесь, что .env содержит OPENROUTER_API_KEY", ""
+        return (
+            "Error: OpenRouter API key not found. Make sure OPENROUTER_API_KEY is in your .env file.",
+            "",
+        )
 
     if not chat_id or chat_id == "string":
         chat_id = str(uuid.uuid4())
 
-
-    db.add(ChatMessages(user_email=user_email, chat_id=chat_id, role="user", content=prompt))
+    db.add(
+        ChatMessages(
+            user_email=user_email, chat_id=chat_id, role="user", content=prompt
+        )
+    )
     db.commit()
 
-    # Системный промпт
-    system_prompt = {
-        "role": "system",
-        "content": (
-            "Ты — профессор математики. "
-            "Отвечай строго, точно, по существу, с примерами и формулами. "
-            "Объясняй понятным языком, но не упрощай слишком сильно. "
-            "You're a maths professor. "
-            "Answer strictly, accurately, to the point, with examples and formulae. "
-            "Explain in clear language, but don't oversimplify."
-        ),
+    system_prompts = {
+        "Mathematics": {
+            "role": "system",
+            "content": (
+                "You are a mathematics professor. Answer strictly, accurately, and to the point. "
+                "Use mathematical notation and formulas when appropriate. "
+                "Give clear examples, but avoid over-simplifying the concepts."
+            ),
+        },
+        "History": {
+            "role": "system",
+            "content": (
+                "You are a professor of history. Provide accurate, chronological responses. "
+                "Explain historical causes and consequences clearly. "
+                "Include important dates, figures, and relevant events."
+            ),
+        },
+        "Programming": {
+            "role": "system",
+            "content": (
+                "You are a software engineer. Answer questions clearly and practically, using real examples in Python. "
+                "Avoid unnecessary theory, and focus on applied code and problem-solving."
+            ),
+        },
+        "Economic": {
+            "role": "system",
+            "content": (
+                "You are an economist. Explain economic concepts clearly using real-world examples. "
+                "Include relevant theories, models, and when appropriate, use data or case studies."
+            ),
+        },
     }
 
-    # Загружаем историю чата
+    system_prompt = system_prompts.get(topic or "Mathematics")
+
+    # if language == "ru":
+    #     system_prompt["content"] = {
+    #         "Mathematics": "Ты — профессор математики. Отвечай строго, с примерами и формулами. только на русском",
+    #         "History": "Ты — профессор истории. Объясняй хронологически и фактами.только на русском",
+    #         "Programming": "Ты — эксперт по программированию. Объясняй с примерами на Python.только на русском",
+    #         "Economic": "Ты — экономист. Объясняй термины и кейсы из реальной экономики.только на русском",
+    #     }.get(topic, system_prompt["content"])
     history = (
         db.query(ChatMessages)
         .filter(ChatMessages.user_email == user_email, ChatMessages.chat_id == chat_id)
@@ -45,10 +86,8 @@ def generate_response_with_history(
         .all()
     )
 
-    # Формируем сообщения
     messages = [system_prompt] + [
-        {"role": msg.role, "content": msg.content}
-        for msg in reversed(history)
+        {"role": msg.role, "content": msg.content} for msg in reversed(history)
     ]
 
     headers = {
@@ -71,9 +110,8 @@ def generate_response_with_history(
         response.raise_for_status()
         reply = response.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
-        reply = f"Ошибка при запросе к OpenRouter: {str(e)}"
+        reply = f"Error requesting OpenRouter: {str(e)}"
 
-    # Сохраняем ответ ассистента
     db.add(
         ChatMessages(
             user_email=user_email, chat_id=chat_id, role="assistant", content=reply

@@ -16,14 +16,14 @@ const Sidebar = ({ onSelectChat, onNewChat, selectedChatId }) => {
         });
 
         if (!res.ok) {
-          console.warn("Ошибка при загрузке чатов.");
+          console.warn("Failed to load chat list.");
           return;
         }
 
         const data = await res.json();
         setChats(data);
       } catch (err) {
-        console.error("Ошибка при загрузке чатов:", err);
+        console.error("Error fetching chats:", err);
       }
     };
 
@@ -31,22 +31,22 @@ const Sidebar = ({ onSelectChat, onNewChat, selectedChatId }) => {
   }, [token]);
 
   return (
-    <div className="w-64 bg-gray-100 dark:bg-gray-800 h-full p-4 overflow-y-auto">
-      <h2 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">
-        История чатов
+    <div className="w-64 bg-white dark:bg-black h-full p-4 overflow-y-auto border-r border-gray-300 dark:border-gray-700">
+      <h2 className="text-lg font-bold mb-4 text-black dark:text-white">
+        Chat History
       </h2>
 
       <button
         onClick={() => {
           if (onNewChat) onNewChat();
         }}
-        className="mb-4 w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        className="mb-4 w-full p-2 bg-white text-black rounded hover:bg-gray-800 transition"
       >
-        Новый чат
+        New Chat
       </button>
 
       {chats.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Нет чатов</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">No chats yet</p>
       ) : (
         chats.map((chat) => {
           const isActive = selectedChatId === chat.chat_id;
@@ -54,13 +54,13 @@ const Sidebar = ({ onSelectChat, onNewChat, selectedChatId }) => {
             <button
               key={chat.chat_id}
               onClick={() => onSelectChat(chat.chat_id)}
-              className={`block w-full text-left p-2 rounded text-sm font-medium ${
+              className={`block w-full text-left p-2 rounded text-sm font-medium transition ${
                 isActive
-                  ? "bg-blue-600 text-white font-bold dark:bg-blue-500"
-                  : "hover:bg-blue-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white"
+                  ? "bg-black text-white font-bold"
+                  : "text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
               }`}
             >
-              Чат {chat.chat_id.slice(0, 8)}...
+              Chat {chat.chat_id.slice(0, 8)}...
             </button>
           );
         })

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from app.init_db import init_db
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
-
+# from  import VITE_API_URL
 app = FastAPI()
 
 app.add_middleware(

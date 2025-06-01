@@ -41,37 +41,37 @@ const LoginPage = ({ setUserEmail }) => {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div className="p-6 bg-white rounded shadow-md w-80">
-        <h2 className="text-xl font-semibold mb-4">Вход</h2>
+    <div className="flex items-center justify-center h-screen bg-white dark:bg-black text-black dark:text-white transition-colors">
+      <div className="p-6 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded shadow-md w-80">
+        <h2 className="text-xl font-semibold mb-4 text-center">login</h2>
         {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
         <input
           type="email"
           placeholder="Email"
-          className="w-full p-2 border rounded mb-3"
+          className="w-full p-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-black dark:text-white rounded mb-3"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
         <input
           type="password"
-          placeholder="Пароль"
-          className="w-full p-2 border rounded mb-4"
+          placeholder="password"
+          className="w-full p-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-black dark:text-white rounded mb-4"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
         <button
           onClick={handleLogin}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          className="w-full bg-black dark:bg-white text-white dark:text-black py-2 rounded hover:opacity-80 transition"
         >
-          Войти
+          login
         </button>
         <p className="mt-2 text-sm text-center">
-          Нет аккаунта?{" "}
+          dont have account?{" "}
           <span
-            className="text-blue-600 cursor-pointer"
+            className="underline cursor-pointer"
             onClick={() => navigate("/register")}
           >
-            Регистрация
+            register
           </span>
         </p>
       </div>

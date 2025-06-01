@@ -1,9 +1,15 @@
-from fastapi import HTTPException, APIRouter, Depends,Query
+from fastapi import HTTPException, APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database.db import SessionLocal
 from app.models.user import User
-from app.schemas.user import UserCreate,ChatRequest,ChatResponse, UserRead,ChatMessagesRead
-# from pydantic import BaseModel
+from app.schemas.user import (
+    UserCreate,
+    ChatRequest,
+    ChatResponse,
+    UserRead,
+    ChatMessagesRead,
+)
+from app.schemas.user import UserSettingsUpdate
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from app.utils.jwt_handler import create_access_token, verify_token
@@ -14,7 +20,7 @@ from app.utils.jwt_handler import verify_token
 from typing import List
 from app.schemas.user import ChatSummary
 from sqlalchemy import func
-
+from app.utils.dependencies import get_current_user, get_current_user_with_db
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -53,38 +59,87 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
+@router.get("/user/settings")
+def get_user_settings(user: User = Depends(get_current_user_with_db)):
+    return {
+        "theme": user.theme,
+        "language": user.language,
+        "font_size": user.font_size,
+        "font_family": user.font_family,
+    }
+
+
+@router.post("/user/settings")
+def update_user_settings(
+    settings: UserSettingsUpdate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    user = get_current_user(token=token, db=db)
+
+    if settings.theme:
+        user.theme = settings.theme
+    if settings.language:
+        user.language = settings.language
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "message": "Settings updated",
+        "theme": user.theme,
+        "language": user.language,
+    }
+
+
 # 12321232143
+
 
 @router.post("/chat", response_model=ChatResponse)
 def chat_endpoint(
     request: ChatRequest,
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     user_email = payload.get("sub")
-    response, chat_id = generate_response_with_history(request.prompt, user_email, db, request.chat_id)
+
+    response, chat_id = generate_response_with_history(
+        prompt=request.prompt,
+        user_email=user_email,
+        db=db,
+        chat_id=request.chat_id,
+        topic=request.topic,
+        # language=request.language
+    )
+
     return {"response": response, "chat_id": chat_id}
 
-#сессии
+
+# сессии
 @router.get("/chat/sessions")
 def list_sessions(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    
+
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Недействительный токен")
     user_email = payload.get("sub")
 
-    sessions = db.query(ChatMessages.chat_id)\
-        .filter(ChatMessages.user_email == user_email)\
-        .distinct().all()
+    sessions = (
+        db.query(ChatMessages.chat_id)
+        .filter(ChatMessages.user_email == user_email)
+        .distinct()
+        .all()
+    )
 
     return [s.chat_id for s in sessions]
 
+
 # story of my chats
+
 
 @router.get("/chat/list", response_model=List[ChatSummary])
 def list_chats(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -96,8 +151,7 @@ def list_chats(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db
 
     subquery = (
         db.query(
-            ChatMessages.chat_id,
-            func.max(ChatMessages.timestamp).label("last_time")
+            ChatMessages.chat_id, func.max(ChatMessages.timestamp).label("last_time")
         )
         .filter(ChatMessages.user_email == user_email)
         .group_by(ChatMessages.chat_id)
@@ -108,9 +162,13 @@ def list_chats(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db
         db.query(
             ChatMessages.chat_id,
             ChatMessages.content.label("last_message"),
-            ChatMessages.timestamp
+            ChatMessages.timestamp,
         )
-        .join(subquery, (ChatMessages.chat_id == subquery.c.chat_id) & (ChatMessages.timestamp == subquery.c.last_time))
+        .join(
+            subquery,
+            (ChatMessages.chat_id == subquery.c.chat_id)
+            & (ChatMessages.timestamp == subquery.c.last_time),
+        )
         .all()
     )
 
@@ -118,33 +176,42 @@ def list_chats(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db
         {
             "chat_id": row.chat_id,
             "last_message": row.last_message,
-            "timestamp": row.timestamp.isoformat()
+            "timestamp": row.timestamp.isoformat(),
         }
         for row in result
     ]
+
+
 #
 
+
 @router.get("/chat/{chat_id}", response_model=List[ChatMessagesRead])
-def get_chat_by_id(chat_id: str, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_chat_by_id(
+    chat_id: str, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+):
     payload = verify_token(token)
     if not payload or "sub" not in payload:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     user_email = payload["sub"]
-    chat = db.query(ChatMessages).filter(
-        ChatMessages.chat_id == chat_id,
-        ChatMessages.user_email == user_email
-    ).order_by(ChatMessages.timestamp).all()
+    chat = (
+        db.query(ChatMessages)
+        .filter(ChatMessages.chat_id == chat_id, ChatMessages.user_email == user_email)
+        .order_by(ChatMessages.timestamp)
+        .all()
+    )
 
     return chat
 
+
 # история чата
+
 
 @router.get("/chat/history", response_model=List[ChatMessagesRead])
 def get_history(
     chat_id: str = Query(...),
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     payload = verify_token(token)
     if not payload or "sub" not in payload:
@@ -154,10 +221,7 @@ def get_history(
 
     history = (
         db.query(ChatMessages)
-        .filter(
-            ChatMessages.user_email == user_email,
-            ChatMessages.chat_id == chat_id  
-        )
+        .filter(ChatMessages.user_email == user_email, ChatMessages.chat_id == chat_id)
         .order_by(ChatMessages.timestamp)
         .all()
     )
@@ -207,7 +271,7 @@ def login(
 
 #!@#!@#%#@%!@#
 
-#adwwadw
+# adwwadw
 
 
 @router.get("/protected")
